@@ -1,0 +1,57 @@
+import paho.mqtt.client as mqtt
+import json
+import ssl
+import time
+from datetime import datetime
+print("runs")
+#config
+broker = "6dee21bc18054d9db4d08e6a88cad0ca.s1.eu.hivemq.cloud"
+port =8883
+user ="RaspberryPi"
+password ="A123a321"
+#gateway topic config
+topic_incoming_temp ="sensor_node001/temperature"
+topic_incoming_gps="sensor_node001/gps"
+topic_incoming_hpa="sensor_node001/pressure"
+topic_incoming_hum="sensor_node001/humidity"
+topic_incoming_imu="sensor_node001/imu"
+topic_incoming_wind="sensor_node001/wind"
+topic_outgoing="cloud/processed"
+#teheee
+#a colorful bunch of functions for mqtt
+def on_connect (client, userdata, flags, rc):
+		if rc ==0:
+			print(f"gateway connected")
+			client.subscribe(topic_incoming_temp)
+			client.subscribe(topic_incoming_gps)
+			client.subscribe(topic_incoming_hpa)
+			client.subscribe(topic_incoming_hum)
+			client.subscribe(topic_incoming_imu)
+			client.subscribe(topic_incoming_wind)
+		else:
+			print(f"failed to connect with code {rc}")
+def on_message(client, userdata, msg):
+	try:
+		payload_str = msg.payload.decode()
+		print(f"msg received on {msg.topic}:{payload_str}")
+		try:
+			data =json.loads(payload_str)
+			data["gateway_id"]="rasPi_001"
+			data["processed_at"]=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+			new_payload =json.dumps(data)
+		except json.JSONDecodeError:
+			new_payload = payload_str
+			
+		client.publish(topic_outgoing, new_payload)
+		print(f"[OUT]sent to {topic_outgoing}:{new_payload}")
+	except Exception as e:
+		print(f"error:{e}")
+	
+
+
+
+
+
+def setup_gateway():
+	client =mqtt.Client()
+	client.username_pw_set(user,password)
